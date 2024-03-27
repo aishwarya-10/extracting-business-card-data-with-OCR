@@ -23,4 +23,15 @@ Install and Import the following libraries
 
 <br>
 
-## Step 2: 
+## Step 2: Text Detection
+- Using easyOCR all the text in the card is detected using the business card image.
+```python
+reader = easyocr.Reader(["en"], gpu=False)
+results = reader.readtext(img, detail=1, paragraph=False, decoder="beamsearch")
+```
+- The detections are viewed by drawing a bounding box around the text with the text coordinates from the results.
+
+## Step 3: Text Recognition
+- The card details are recognized as a specific field using regular expression Python and stored in a pandas dataframe.
+
+## Step 4: Streamlit Dashboard
