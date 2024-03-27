@@ -1,5 +1,5 @@
 # BizCardX - Extracting Business Card Data with OCR
-This provides provides a user-interface for extracting business card informations with easyOCR and streamlit.
+This provides a user interface for extracting business card information with easyOCR and Streamlit.
 
 [**Click here to view the app**]() 
 
@@ -8,7 +8,7 @@ This provides provides a user-interface for extracting business card information
 <br>
 
 # OCR
-OCR or Optical Character Recognition is also referred to as text recognition or text extraction. This machine learning based **easyOCR** technique allows user to extract printed or handwritten text from posters, cards, documents, etc. The text can be words, text lines or paragraphs enabling us to have a digital version of scanned text. This significantly eliminates manual entry. The OCR used here is by [**JAIDED AI](https://github.com/JaidedAI/EasyOCR?tab=readme-ov-file).
+OCR or Optical Character Recognition is also referred to as text recognition or text extraction. This machine learning-based **easyOCR** technique allows users to extract printed or handwritten text from posters, cards, documents, etc. The text can be words, text lines or paragraphs enabling us to have a digital version of scanned text. This significantly eliminates manual entry. The OCR used here is by [**JAIDED AI**](https://github.com/JaidedAI/EasyOCR?tab=readme-ov-file).
 
 <br>
 
@@ -31,7 +31,14 @@ results = reader.readtext(img, detail=1, paragraph=False, decoder="beamsearch")
 ```
 - The detections are viewed by drawing a bounding box around the text with the text coordinates from the results.
 
+<br>
+
 ## Step 3: Text Recognition
-- The card details are recognized as a specific field using regular expression Python and stored in a pandas dataframe.
+- The card details are recognized as a specific field using regular expression Python and stored in a pandas data frame.
+
+<br>
 
 ## Step 4: Streamlit Dashboard
+- The detected card details are stored in SQL DB for viewing, modifying, and deleting a stored card by the user.
+- These functionalities are provided to the user with button input elements by streamlit.
+- The web application is deployed for use by others.
