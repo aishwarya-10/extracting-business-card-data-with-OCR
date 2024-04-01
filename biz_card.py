@@ -5,6 +5,8 @@ import cv2
 
 #[Data Store]
 import sqlite3
+import os
+import platform
 
 #[Data Transformation]
 import pandas as pd
@@ -60,9 +62,27 @@ with col2:
                 """)
 
 st.subheader("Upload the Business Card")
+
 # User business card
 st.write("Try BizcardX with a simple drag-and-drop.")
-uploaded_image = st.file_uploader("Choose an image file", type=["png", "jpg", "jpeg"])
+uploads = st.file_uploader("Choose an image file", 
+                                  type=["png", "jpg", "jpeg"], 
+                                  accept_multiple_files=False, 
+                                  key="images")
+
+def save_card(uploads):
+    with open(os.path.join("uploaded_cards", uploads.name), "wb") as f:
+        f.write(uploads.getbuffer())   
+save_card(uploads)
+
+# Get Image
+if platform.system() == "Linux":
+    uploaded_image = os.getcwd()+ "/" + "uploaded_cards"+ "/"+ uploads.name
+elif platform.system() == "Darwin":   ## Mac os
+    uploaded_image = os.getcwd()+ "\/" + "uploaded_cards"+ "\/"+ uploads.name
+if platform.system() == "Windows":
+    uploaded_image = os.getcwd()+ "\\" + "uploaded_cards"+ "\\"+ uploads.name
+
 
 # Sample business card
 st.write("Don't have a business card? Try one of our sample.")
@@ -79,17 +99,18 @@ buttons = [
 col1, col2, col3 = st.columns(3)
 
 # Iterate through buttons and create them with grid placement
-uploaded_image = None
-for button_text, image_path in buttons:
-    with (col1 if buttons.index((button_text, image_path)) % 3 == 0 else
-        (col2 if buttons.index((button_text, image_path)) % 3 == 1 else col3)):
-        if st.button(button_text):
-            uploaded_image = image_path
+if uploaded_image == None:
+    for button_text, image_path in buttons:
+        with (col1 if buttons.index((button_text, image_path)) % 3 == 0 else
+            (col2 if buttons.index((button_text, image_path)) % 3 == 1 else col3)):
+            if st.button(button_text):
+                uploaded_image = image_path
 
 
 # Connect to SQL DB
-connection = sqlite3.connect("business_card.db")
+connection = sqlite3.connect("business_card.db", check_same_thread=False)
 cur = connection.cursor()
+
 # Create table for uploading business card details
 cur.execute("""CREATE TABLE IF NOT EXISTS bizcard(
             CompanyName VARCHAR(255),
@@ -103,7 +124,11 @@ cur.execute("""CREATE TABLE IF NOT EXISTS bizcard(
             Pincode INT,
             Image LONGBLOB
             )""")
+cur.close()
+connection.commit()
+# connection.close()
 
+# connection = sqlite3.connect("business_card.db")
 
 def read_text(uploaded_image):
     # Load the image
@@ -194,12 +219,11 @@ def transform_data(results, uploaded_image):
         else:
             data["Company Name"].append(i)
  
-
     data["Company Name"] = " ".join(str(j).capitalize() for j in data["Company Name"])
     data["Designation"] = [str(j).title() for j in data["Designation"]]
     data["Ph. Number"] = ", ".join(data["Ph. Number"])
-    # data["Address"] = [", ".join(addr) if isinstance(addr, list) else addr for addr in data["Address"]]
     data["Address"] = ", ".join(data["Address"])   
+
     # Transform dict to dataframe
     df = pd.DataFrame(data, columns=["Company Name", "Name", "Designation", "Ph. Number", "MailID", "Website", "Address", "State", "Pincode", "Image"])
     return card_text, df
@@ -217,11 +241,31 @@ def bounding_box(results, img_rgb):
         # img = cv2.putText(img, text, top_left, font, 1, (50,200,255), 2, cv2.LINE_AA)
     display(img)
 
+
+def insert_data():
+    # st.session_state.clicked = True
+    try:
+        connection = sqlite3.connect("business_card.db")
+        cur = connection.cursor()
+        # Insert business card details
+        data_tosql = "INSERT INTO bizcard (CompanyName, Name, Designation, PhNumber, MailID, Website, Address, State, Pincode, Image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+
+        print("entered insert fn")
+        with st.spinner("Storing data..."):
+            for i in range(len(card_df)):
+                cur.execute(data_tosql, tuple(card_df.iloc[i]))
+        connection.commit()
+        st.success("The card details are stored successfully.")
+
+    except Exception as e:
+        print(e)
+        # st.error(f"An unexpected error occurred: {e}")
+
+
 if uploaded_image is not None:
     st.success("The business card upload was successful!")
     with st.spinner("Reading text in the image..."):
         img_rgb, results = read_text(uploaded_image)
-
         card_text, card_df = transform_data(results, uploaded_image)
 
         col1, col2 = st.columns(2)
@@ -248,31 +292,24 @@ if uploaded_image is not None:
             '''
             st.markdown(css, unsafe_allow_html=True)  
 
-        # Data to SQL DB
-        with stylable_container(
-            key="blue_button",
-            css_styles="""
-                button {
-                    background-color: blue;
-                    color: black;
-                    border-radius: 20px;
-                    background-image: linear-gradient(90deg, #89f7fe 0%, #66a6ff 100%);
-                }
-                """,
-        ):
-            to_sql = st.button("Store the Data", key="store")
+    # if 'clicked' not in st.session_state:
+    #     st.session_state.clicked = False
 
-        if to_sql:
-            try:
-                # Insert business card details
-                data_tosql = "INSERT INTO bizcard (CompanyName, Name, Designation, PhNumber, MailID, Website, Address, State, Pincode, Image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
-                for i in range(len(card_df)):
-                    cur.execute(data_tosql, tuple(card_df.iloc[i]))
-                    connection.commit()
-                st.success("The card details are stored successfully.")
-            except Exception as e:
-                st.error("Error: ", e)
+    # Data to SQL DB
+    with stylable_container(
+        key="blue_button",
+        css_styles="""
+            button {
+                background-color: blue;
+                color: black;
+                border-radius: 20px;
+                background-image: linear-gradient(90deg, #89f7fe 0%, #66a6ff 100%);
+            }
+            """,
+    ):
+        to_sql = st.button("Store the Data", key="store", on_click=insert_data)
+
 
 # View, Modify and Delete
 # Query the SQL data
@@ -281,15 +318,15 @@ st.subheader(":violet[View Business Card Details]")
 # Connect to SQL database
 try:
     connection = sqlite3.connect("business_card.db")
-    cur = connection.cursor()
 except:
     print('Database connection could not be established.')
 
 # Initial value for session state
-if "selectbox_enabled" not in st.session_state:
-    st.session_state["selectbox_enabled"] = False
+# if "selectbox_enabled" not in st.session_state:
+#     st.session_state["selectbox_enabled"] = False
 
 def execute_query(selected_option: str):
+    cur = connection.cursor()
     # Card details
     cur.execute(f"""SELECT CompanyName, Name, Designation, PhNumber, MailID, Website, Address, State, Pincode FROM bizcard
                 WHERE Name = "{selected_option}" """)
@@ -301,7 +338,7 @@ def execute_query(selected_option: str):
     cur.execute(f"""SELECT Image FROM bizcard
                 WHERE Name = "{selected_option}" """)
     query_result2 = cur.fetchone()
-    image_data = query_result2[0]     # the image data in the first element
+    image_data = query_result2[0]     # The image data in the first element
     encoded_image = base64.b64encode(image_data).decode("utf-8")    # Encode binary data to Base64 string
     data_uri = f"data:image/png;base64,{encoded_image}"     # Construct data URI with Base64 encoded image and PNG mimetype
     
@@ -309,10 +346,12 @@ def execute_query(selected_option: str):
 
 
 # To get list of uploaded business card holder name
+cur = connection.cursor()
 cur.execute("SELECT Name FROM bizcard")
 companies = cur.fetchall()
 df = pd.DataFrame(companies, columns= ["Name"])
 options = df["Name"].to_list()
+cur.close()
 
 # To select a card
 selected_option = st.selectbox("Select a Card Holder Name to view",
@@ -321,71 +360,78 @@ selected_option = st.selectbox("Select a Card Holder Name to view",
                                placeholder="To view card details...",
                                key= "view-card")
 if selected_option:
-    st.session_state["selectbox_enabled"] = True
+    # st.session_state["selectbox_enabled"] = True
     query_df, data_uri= execute_query(selected_option)
     col1, col2 = st.columns(2)
+    # Column 1: Card details
     with col1:
-            st.dataframe(query_df)
+            st.dataframe(query_df.T)
+    # Column 2: Card Image
     with col2:
             st.image(data_uri, width= 500)
 
+    col1, col2 = st.columns(2)
+    # Column 1: Modify card
+    with col1:
+        with stylable_container(
+            key="green_button",
+            css_styles="""
+                button {
+                    background-color: green;
+                    color: black;
+                    border-radius: 20px;
+                    background-image: linear-gradient(90deg, #dce35b 0%, #45b649 100%);
+                }
+                """,
+        ):
+            modify_sql = st.button("Modify the Data", key="modify")
 
-    # Modify card
-    with stylable_container(
-        key="green_button",
-        css_styles="""
-            button {
-                background-color: green;
-                color: black;
-                border-radius: 20px;
-                background-image: linear-gradient(90deg, #dce35b 0%, #45b649 100%);
-            }
-            """,
-    ):
-        modify_sql = st.button("Modify the Data", key="modify")
+        if modify_sql:
+            # Display all the card details
+            CompanyName = st.text_input("CompanyName", query_df.iloc[0, 0])
+            Name = st.text_input("Name", query_df.iloc[0, 1])
+            Designation = st.text_input("Designation", query_df.iloc[0, 2])
+            PhNumber = st.text_input("PhNumber", query_df.iloc[0, 3])
+            MailID = st.text_input("MailID", query_df.iloc[0, 4])
+            Website = st.text_input("Website", query_df.iloc[0, 5])
+            Address = st.text_input("Address", query_df.iloc[0, 6])
+            State = st.text_input("State", query_df.iloc[0, 7])
+            Pincode = st.text_input("Pincode", query_df.iloc[0, 8])
+                                
 
-    if modify_sql:
-        # Display all the card details
-        CompanyName = st.text_input("CompanyName", query_df.iloc[0, 0])
-        Name = st.text_input("Name", query_df.iloc[0, 1])
-        Designation = st.text_input("Designation", query_df.iloc[0, 2])
-        PhNumber = st.text_input("PhNumber", query_df.iloc[0, 3])
-        MailID = st.text_input("MailID", query_df.iloc[0, 4])
-        Website = st.text_input("Website", query_df.iloc[0, 5])
-        Address = st.text_input("Address", query_df.iloc[0, 6])
-        State = st.text_input("State", query_df.iloc[0, 7])
-        Pincode = st.text_input("Pincode", query_df.iloc[0, 8])
-                             
-
-        if st.button("Update Changes", key="update"):
-            # Update the details for the selected business card in the database
-            cur.execute("""UPDATE bizcard SET CompanyName=%s,Name=%s,Designation=%s,PhNumber=%s,MailID=%s,Website=%s,Address=%s,State=%s,Pincode=%s
-                        WHERE Name=%s""", (CompanyName,Name,Designation,PhNumber,MailID,Website,Address,State,Pincode,selected_option))
-            connection.commit()
-            st.success("The card details are updated successfully.")
-
+            if st.button("Update Changes", key="update"):
+                # Update the details for the selected business card in the database
+                cur = connection.cursor()
+                cur.execute("""UPDATE bizcard SET CompanyName=%s,Name=%s,Designation=%s,PhNumber=%s,MailID=%s,Website=%s,Address=%s,State=%s,Pincode=%s
+                            WHERE Name=%s""", (CompanyName,Name,Designation,PhNumber,MailID,Website,Address,State,Pincode,selected_option))
+                connection.commit()
+                cur.close()
+                st.success("The card details are updated successfully.")
     # Delete card
-    with stylable_container(
-        key="red_button",
-        css_styles="""
-            button {
-                background-color: red;
-                color: black;
-                border-radius: 20px;
-                background-image: linear-gradient(90deg, #ff9966 0%, #ff5e62 100%);
-            }
-            """,
-    ):
-        delete_sql = st.button("Delete the Data", key="delete")
+    with col2:
+        with stylable_container(
+            key="red_button",
+            css_styles="""
+                button {
+                    background-color: red;
+                    color: black;
+                    border-radius: 20px;
+                    background-image: linear-gradient(90deg, #ff9966 0%, #ff5e62 100%);
+                }
+                """,
+        ):
+            delete_sql = st.button("Delete the Data", key="delete")
 
-    if delete_sql:
-        cur.execute(f"DELETE FROM bizcard WHERE Name = '{selected_option}' ")
-        connection.commit()
-        st.success("The card details are deleted successfully.")
+        if delete_sql:
+            cur = connection.cursor()
+            cur.execute(f"DELETE FROM bizcard WHERE Name = '{selected_option}' ")
+            connection.commit()
+            cur.close()
+            st.success("The card details are deleted successfully.")
 
 
 
 
 
-# cd extracting-business-card-data-with-OCR
+# cd Projects\Project_3\git_project3\extracting-business-card-data-with-OCR
 # streamlit run biz_card.py
