@@ -309,7 +309,7 @@ if uploaded_image is not None:
             """,
     ):
         to_sql = st.button("Store the Data", key="store", on_click=insert_data)
-
+st.write("")
 
 # =======================================       /     MODIFY AND DELETE    /      ========================================= #
 st.subheader("Modify/Delete Business Card")
