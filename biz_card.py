@@ -486,5 +486,19 @@ with st.expander("View Business Card Details"):
     updated_df = pd.DataFrame(cur.fetchall(),columns=["Company Name", "Name", "Designation", "Ph. Number", "Mail ID", "Website", "Address", "State", "Pincode"])
     st.write(updated_df)
 
+st.write("")
+
+# Save to local
+st.subheader("Save Details to Local")
+csv_file = updated_df.to_csv(index=False)  # Convert DataFrame to CSV string (without index)
+
+# Create the download button
+st.download_button(
+    label="Download CSV",
+    data=csv_file,
+    file_name="business_cards.csv",  # Set desired filename
+    mime="text/csv",  # Specify MIME type for CSV
+)
+
 # cd Projects\Project_3\git_project3\extracting-business-card-data-with-OCR
 # streamlit run biz_card.py
