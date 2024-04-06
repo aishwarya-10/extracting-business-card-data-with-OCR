@@ -3,7 +3,7 @@ This provides a user interface for extracting business card information with eas
 
 [**Click here to view the app**]() 
 
-[**Project Demo**]()
+[**Project Demo**](https://www.linkedin.com/posts/aishwarya-velmurugan_hi-everyone-im-excited-to-share-my-latest-activity-7181711151318138880-e6ko?utm_source=share&utm_medium=member_desktop)
 
 <br>
 
